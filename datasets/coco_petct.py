@@ -95,9 +95,9 @@ class CocoPETCT:
 
         #img = Image.open(img_path).convert('RGB')
         with open(img_ann_path, 'rb') as f:
-            img = np.load(f) # this is a gray image... need to make into rgb and also want to augment for different SUV max
+            suv_img = np.load(f) # this is a gray image... need to make into rgb and also want to augment for different SUV max
             masks = np.load(f)
-        w, h = img.size
+        w, h = suv_img.size
         
         # Presaved for petct dataset
         img = torch.as_tensor(img, dtype=torch.uint8)
@@ -188,10 +188,11 @@ def build(image_set, args):
         train_dict, val_dict = train_val_split(ann_file, args.train_split, args.cross_val, args.val_fold)
 
         train_dataset = CocoPETCT(img_folder_path, ann_folder, train_dict,
-                               transforms=make_coco_transforms(image_set), return_masks=args.masks)
+                               transforms=make_coco_transforms("train"), return_masks=args.masks)
 
         val_dataset = CocoPETCT(img_folder_path, ann_folder, val_dict,
-                               transforms=make_coco_transforms(image_set), return_masks=args.masks)
+                               transforms=make_coco_transforms("val"), return_masks=args.masks)
+        
     elif image_set == "test":
         train_dataset = None
         
