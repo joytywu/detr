@@ -13,6 +13,7 @@ from util.box_ops import masks_to_boxes
 from .coco import make_coco_transforms # TO DO: will want to use own PET specifc transforms
 
 
+# Need a seed everything function
 def random_shuffle_two_lists(list1, list2):
     random.seed(42)
     
@@ -99,8 +100,18 @@ class CocoPETCT:
             masks = np.load(f)
         w, h = suv_img.size
         
+        # Random cmap augmentation -- need to resave it!
+        colorlist = ['Greys', 'twilight']
+        color = random.choice(colorlist)
+        cmap = plt.cm.get_cmap(color)
+        # Randrom augmentation for SUV normalization
+        suv_values = [5,6,7,8,9,10]
+        suv_max = random.choice(suv_values)
+        norm = plt.Normalize(vmin = 0, vmax = suv_max)
+        img = cmap(norm(suv_img))[:,:,:3].copy() # drop the alpha channel that we don't need
+        
         # Presaved for petct dataset
-        img = torch.as_tensor(img, dtype=torch.uint8)
+        img = torch.as_tensor(img, dtype=torch.float64)
         masks = torch.as_tensor(masks, dtype=torch.uint8)
         labels = torch.tensor([ann['category_id'] for ann in ann_info['segments_info']], dtype=torch.int64)
         
