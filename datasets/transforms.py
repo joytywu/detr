@@ -178,6 +178,20 @@ class CenterCrop(object):
         return crop(img, target, (crop_top, crop_left, crop_height, crop_width))
 
 
+# added for pet augmentation; center has the features worth paying attention to for PET 
+class RandomCenterCrop(object):
+    def __init__(self, sizes):
+        self.sizes = sizes
+   
+    def __call__(self, img, target):
+        image_width, image_height = img.size
+        crop_width = min(random.randint(self.sizes), image_width)
+        crop_height = min(crop_width, image_height) # maybe this should be 0 so no important info will get cropped out
+        crop_top = int(round((image_height - crop_height) / 2.))
+        crop_left = int(round((image_width - crop_width) / 2.))
+        return crop(img, target, (crop_top, crop_left, crop_height, crop_width))    
+    
+
 class RandomHorizontalFlip(object):
     def __init__(self, p=0.5):
         self.p = p
@@ -252,7 +266,7 @@ class Normalize(object):
         h, w = image.shape[-2:]
         if "boxes" in target:
             boxes = target["boxes"]
-            boxes = box_xyxy_to_cxcywh(boxes)
+            boxes = box_xyxy_to_cxcywh(boxes) # but petct dataset boxes are [x1,y1,w,h] 
             boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
             target["boxes"] = boxes
         return image, target

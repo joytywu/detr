@@ -81,7 +81,7 @@ def get_args_parser():
                         help="Relative classification weight of the no-object class")
 
     # dataset parameters
-    parser.add_argument('--dataset_file', default='coco')
+    parser.add_argument('--dataset_file', default='coco') # will need to have 'coco_petct' as dataset_file in input
     parser.add_argument('--coco_path', type=str)
     parser.add_argument('--coco_panoptic_path', type=str)
     parser.add_argument('--coco_petct_path', type=str) # new
@@ -172,6 +172,7 @@ def main(args):
         coco_val = datasets.coco.build("val", args)
         base_ds = get_coco_api_from_dataset(coco_val)
     else:
+        # best to just use this since may want to do cross val which won't work with panoptic dataloading pipeline
         base_ds = get_coco_api_from_dataset(dataset_val) # this should do for petct experiments
 
     if args.frozen_weights is not None:
@@ -191,6 +192,7 @@ def main(args):
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             args.start_epoch = checkpoint['epoch'] + 1
 
+    # Don't fully understand this part - what's the difference between data_loader_val and base_ds
     if args.eval:
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
                                               data_loader_val, base_ds, device, args.output_dir)

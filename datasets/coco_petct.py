@@ -96,22 +96,21 @@ class CocoPETCT:
 
         #img = Image.open(img_path).convert('RGB')
         with open(img_ann_path, 'rb') as f:
-            suv_img = np.load(f) # this is a gray image... need to make into rgb and also want to augment for different SUV max
+            suv_img = np.load(f) # this is a single channel gray image, dtype numpy float64
             masks = np.load(f)
         w, h = suv_img.size
         
-        # Random cmap augmentation -- need to resave it!
-        colorlist = ['Greys', 'twilight']
-        color = random.choice(colorlist)
-        cmap = plt.cm.get_cmap(color)
         # Randrom augmentation for SUV normalization
-        suv_values = [5,6,7,8,9,10]
+        suv_values = [6,7,8,9,10,15,20]
         suv_max = random.choice(suv_values)
         norm = plt.Normalize(vmin = 0, vmax = suv_max)
-        img = cmap(norm(suv_img))[:,:,:3].copy() # drop the alpha channel that we don't need
+        
+        # Color map to gray images, 3 channels
+        cmap = plt.cm.Greys
+        img = cmap(norm(suv_img))[:,:,:3].copy() # drop the alpha channel that we don't need. has shape (H x W x 3C) 
+        #img = torch.as_tensor(img, dtype=torch.float64) # the transforms will turn the numpy img array to a tensor (C x H x W)
         
         # Presaved for petct dataset
-        img = torch.as_tensor(img, dtype=torch.float64)
         masks = torch.as_tensor(masks, dtype=torch.uint8)
         labels = torch.tensor([ann['category_id'] for ann in ann_info['segments_info']], dtype=torch.int64)
         
@@ -131,8 +130,8 @@ class CocoPETCT:
             target['masks'] = masks
         target['labels'] = labels
 
-        #target["boxes"] = masks_to_boxes(masks)
-        target["boxes"] = torch.tensor([ann['bbox'] for ann in ann_info['segments_info']], dtype=torch.int64)
+        target["boxes"] = masks_to_boxes(masks) #just ensures same format as transforms expects xyxy format boxes
+        #target["boxes"] = torch.tensor([ann['bbox'] for ann in ann_info['segments_info']], dtype=torch.int64) #presaved in xywh
 
         target['size'] = torch.as_tensor([int(h), int(w)])
         target['orig_size'] = torch.as_tensor([int(h), int(w)])
