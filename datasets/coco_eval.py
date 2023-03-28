@@ -28,27 +28,34 @@ class CocoEvaluator(object):
         self.iou_types = iou_types
         self.coco_eval = {}
         for iou_type in iou_types:
-            self.coco_eval[iou_type] = COCOeval(coco_gt, iouType=iou_type)
+            self.coco_eval[iou_type] = COCOeval(cocoGt=coco_gt, iouType=iou_type)
 
         self.img_ids = []
         self.eval_imgs = {k: [] for k in iou_types}
 
-    def update(self, predictions):
+    def update(self, predictions): ### - maybe something wrong in here
+        print(predictions)
         img_ids = list(np.unique(list(predictions.keys())))
         self.img_ids.extend(img_ids)
 
         for iou_type in self.iou_types:
-            results = self.prepare(predictions, iou_type)
+            results = self.prepare(predictions, iou_type) #turns 'boxes' to 'bbox'
+            #print('Results:', results) # prints list of {} with 'bbox' as one of the keys
 
             # suppress pycocotools prints
             with open(os.devnull, 'w') as devnull:
                 with contextlib.redirect_stdout(devnull):
                     coco_dt = COCO.loadRes(self.coco_gt, results) if results else COCO()
+                    print('##', coco_dt)
             coco_eval = self.coco_eval[iou_type]
-
+            
             coco_eval.cocoDt = coco_dt
             coco_eval.params.imgIds = list(img_ids)
-            img_ids, eval_imgs = evaluate(coco_eval)
+            print('###', coco_eval.cocoGt) #not empty
+            print('###', coco_eval.cocoDt) #not empty
+            print('###', coco_eval._gts) #empty {}
+            print('###', coco_eval._dts) #empty {}
+            img_ids, eval_imgs = evaluate(coco_eval) #key error with 'bbox' here
 
             self.eval_imgs[iou_type].append(eval_imgs)
 
@@ -213,22 +220,27 @@ def evaluate(self):
     # tic = time.time()
     # print('Running per image evaluation...')
     p = self.params
+    print('self._gts', self._gts) #emtpy {}
+    print('self._dts', self._dts) #emtpy {}
     # add backward compatibility if useSegm is specified in params
     if p.useSegm is not None:
         p.iouType = 'segm' if p.useSegm == 1 else 'bbox'
         print('useSegm (deprecated) is not None. Running {} evaluation'.format(p.iouType))
-    # print('Evaluate annotation type *{}*'.format(p.iouType))
+    print('Evaluate annotation type *{}*'.format(p.iouType))
     p.imgIds = list(np.unique(p.imgIds))
     if p.useCats:
         p.catIds = list(np.unique(p.catIds))
     p.maxDets = sorted(p.maxDets)
     self.params = p
 
-    self._prepare()
+    self._prepare() # prepares self._gts and self._dts
+#     print('self._gts', self._gts) #not empty
+#     print('self._dts', self._dts) #not empty
     # loop through images, area range, max detection number
     catIds = p.catIds if p.useCats else [-1]
 
     if p.iouType == 'segm' or p.iouType == 'bbox':
+        print(p.iouType, '###')
         computeIoU = self.computeIoU
     elif p.iouType == 'keypoints':
         computeIoU = self.computeOks

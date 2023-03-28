@@ -5,14 +5,15 @@ COCO dataset which returns image_id for evaluation.
 Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/coco_utils.py
 """
 from pathlib import Path
+from PIL import Image
 
 import torch
 import torch.utils.data
 import torchvision
-from pycocotools import mask as coco_mask
+from pycocotools import mask as coco_mask 
 
 import datasets.transforms as T
-
+      
 
 class CocoDetection(torchvision.datasets.CocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks):
@@ -27,9 +28,9 @@ class CocoDetection(torchvision.datasets.CocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-        return img, target
-
-
+        return img, target        
+        
+    
 def convert_coco_poly_to_mask(segmentations, height, width):
     masks = []
     for polygons in segmentations:
@@ -111,6 +112,50 @@ class ConvertCocoPolysToMask(object):
 
         return image, target
 
+# # adapted for PET tumor detection
+# def make_coco_transforms(image_set):
+
+#     normalize = T.Compose([
+#         T.ToTensor(), # This will scale between 0 and 1 and make tensor channel first
+#         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) #not sure if this is helpful or bad 
+#     ])
+
+#     scales = [352, 384, 416, 448, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+#     sizes = [352, 384, 416, 448, 480, 512]
+
+#     if image_set == 'train':
+#         return T.Compose([
+#             #T.RandomHorizontalFlip(),  #may not want this for pet/ct, makes no sense to flip pet images upside down
+#             T.RandomSelect(
+#                 T.RandomResize(scales, max_size=800),
+#                 T.RandomCenterCrop(sizes),
+# #                 T.Compose([
+# #                     T.RandomResize([400, 500, 600]),
+# #                     T.RandomSizeCrop(384, 600),
+# #                     T.RandomResize(scales, max_size=800),
+# #                 ]),
+#                 T.Compose([
+#                     T.RandomResize([400, 500, 600]),
+#                     T.RandomCenterCrop(sizes),
+#                     T.RandomResize(scales, max_size=800),
+#                 ]),
+#                 T.Compose([
+#                     T.RandomCenterCrop(sizes),
+#                     T.RandomResize(scales, max_size=800),
+#                 ])
+#             ),
+#             normalize,
+#         ])
+
+#     if (image_set == 'val')|(image_set == 'test'):
+#         return T.Compose([
+#             #T.RandomResize([800], max_size=800), #don't want to change specs on testing
+#             normalize,
+#         ])
+
+#     raise ValueError(f'unknown {image_set}')
+
+
 # adapted for PET tumor detection
 def make_coco_transforms(image_set):
 
@@ -121,28 +166,28 @@ def make_coco_transforms(image_set):
 
     scales = [352, 384, 416, 448, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
     sizes = [352, 384, 416, 448, 480, 512]
+    
+    A = T.RandomResize(scales, max_size=800)
+    B = T.RandomCenterCrop(sizes)
+    C = T.Compose([
+                    T.RandomResize([400, 500, 600]),
+                    T.RandomCenterCrop(sizes),
+                    T.RandomResize(scales, max_size=800),
+                ])
+    D = T.Compose([
+                    T.RandomCenterCrop(sizes),
+                    T.RandomResize(scales, max_size=800),
+                ])
 
     if image_set == 'train':
         return T.Compose([
             #T.RandomHorizontalFlip(),  #may not want this for pet/ct, makes no sense to flip pet images upside down
-            T.RandomSelect(
-                T.RandomResize(scales, max_size=800),
-                T.RandomCenterCrop(sizes),
-#                 T.Compose([
-#                     T.RandomResize([400, 500, 600]),
-#                     T.RandomSizeCrop(384, 600),
-#                     T.RandomResize(scales, max_size=800),
-#                 ]),
-                T.Compose([
-                    T.RandomResize([400, 500, 600]),
-                    T.RandomCenterCrop(sizes),
-                    T.RandomResize(scales, max_size=800),
-                ]),
-                T.Compose([
-                    T.RandomCenterCrop(sizes),
-                    T.RandomResize(scales, max_size=800),
-                ])
-            ),
+#             T.RandomSelectMultiple([
+#                 A,
+#                 B,
+#                 C,
+#                 D
+#             ]),
             normalize,
         ])
 
@@ -167,5 +212,9 @@ def build(image_set, args):
     img_folder, ann_file = PATHS[image_set]
     dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set), return_masks=args.masks)
     return dataset
+
+
+
+
 
 

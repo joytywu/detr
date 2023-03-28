@@ -185,7 +185,7 @@ class RandomCenterCrop(object):
    
     def __call__(self, img, target):
         image_width, image_height = img.size
-        crop_width = min(random.randint(self.sizes), image_width)
+        crop_width = min(random.choice(self.sizes), image_width)
         crop_height = min(crop_width, image_height) # maybe this should be 0 so no important info will get cropped out
         crop_top = int(round((image_height - crop_height) / 2.))
         crop_left = int(round((image_width - crop_width) / 2.))
@@ -239,6 +239,19 @@ class RandomSelect(object):
         return self.transforms2(img, target)
 
 
+class RandomSelectMultiple(object):
+    """
+    Randomly selects one transform between multiple transforms,
+    with same probability 
+    """
+    def __init__(self, transformslist):
+        self.transformslist = transformslist
+
+    def __call__(self, img, target):
+        transformsX = random.choice(self.transformslist)
+        return transformsX(img, target)
+    
+    
 class ToTensor(object):
     def __call__(self, img, target):
         return F.to_tensor(img), target

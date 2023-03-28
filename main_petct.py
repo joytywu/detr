@@ -5,10 +5,12 @@ import json
 import random
 import time
 from pathlib import Path
+import os
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, DistributedSampler
+import torchvision
 
 import datasets
 import util.misc as utils
@@ -127,10 +129,11 @@ def main(args):
     random.seed(seed)
 
     model, criterion, postprocessors = build_model(args)
+    print('This task include predicting: ', postprocessors.keys())
     model.to(device)
 
     model_without_ddp = model
-    if args.distributed:
+    if args.distributed: ##??
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
         model_without_ddp = model.module
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -147,11 +150,12 @@ def main(args):
                                   weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
 
-    #dataset_train = build_dataset(image_set='train', args=args)
-    #dataset_val = build_dataset(image_set='val', args=args)
-    dataset_train, dataset_val = build_dataset(image_set='train', args=args) # plan to use 4 or 5 fold cross validation
-    # The rest of the main code should be fine.
-
+    print('building datasets')
+    dataset_train = build_dataset(image_set='train', args=args)
+    dataset_val = build_dataset(image_set='val', args=args)
+    print('built datasets')
+    
+    print('loading datasets')
     if args.distributed:
         sampler_train = DistributedSampler(dataset_train)
         sampler_val = DistributedSampler(dataset_val, shuffle=False)
@@ -161,16 +165,22 @@ def main(args):
 
     batch_sampler_train = torch.utils.data.BatchSampler(
         sampler_train, args.batch_size, drop_last=True)
-
+    
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
                                    collate_fn=utils.collate_fn, num_workers=args.num_workers)
     data_loader_val = DataLoader(dataset_val, args.batch_size, sampler=sampler_val,
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
 
     if args.dataset_file == "coco_panoptic":
-        # We also evaluate AP during panoptic training, on original coco DS
+        # We also evaluate AP during panoptic training, on original coco DS -- not sure we need to do this for petct
         coco_val = datasets.coco.build("val", args)
         base_ds = get_coco_api_from_dataset(coco_val)
+    elif args.dataset_file == "coco_petct":
+        print(args.dataset_file)
+        coco_val = datasets.coco_petct.build("val", args)
+        print(isinstance(coco_val, torchvision.datasets.CocoDetection))
+        base_ds = get_coco_api_from_dataset(coco_val)
+        print(type(base_ds))
     else:
         # best to just use this since may want to do cross val which won't work with panoptic dataloading pipeline
         base_ds = get_coco_api_from_dataset(dataset_val) # this should do for petct experiments
@@ -178,8 +188,12 @@ def main(args):
     if args.frozen_weights is not None:
         checkpoint = torch.load(args.frozen_weights, map_location='cpu')
         model_without_ddp.detr.load_state_dict(checkpoint['model'])
-
+    print('loaded datasets')
+    
     output_dir = Path(args.output_dir)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
     if args.resume:
         if args.resume.startswith('https'):
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -193,13 +207,15 @@ def main(args):
             args.start_epoch = checkpoint['epoch'] + 1
 
     # Don't fully understand this part - what's the difference between data_loader_val and base_ds
-    if args.eval:
-        test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
-                                              data_loader_val, base_ds, device, args.output_dir)
-        if args.output_dir:
-            utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
-        return
-
+#     if args.eval:
+    print(type(base_ds))
+    print(type(data_loader_val))
+    test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
+                                          data_loader_val, base_ds, device, args.output_dir)
+    if args.output_dir:
+        utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
+    return
+    
     print("Start training")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):

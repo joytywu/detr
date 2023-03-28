@@ -315,6 +315,8 @@ def build(args):
         # for panoptic, we just add a num_classes that is large enough to hold
         # max_obj_id + 1, but the exact value doesn't really matter
         num_classes = 250
+    if args.dataset_file == "coco_petct":
+        num_classes = args.num_classes # starting with 2
     if args.num_classes is not None:
         print('Building a DETR model with %s classes' % args.num_classes)
         num_classes = args.num_classes
@@ -354,9 +356,9 @@ def build(args):
     criterion.to(device)
     postprocessors = {'bbox': PostProcess()}
     if args.masks:
-        postprocessors['segm'] = PostProcessSegm()
+        postprocessors['segm'] = PostProcessSegm() #petct will have segm then since dataset has the masks
         if args.dataset_file == "coco_panoptic":
-            is_thing_map = {i: i <= 90 for i in range(201)}
+            is_thing_map = {i: i <= 90 for i in range(201)} ### TO DO: ??? what's the equivalent for PETCT
             postprocessors["panoptic"] = PostProcessPanoptic(is_thing_map, threshold=0.85)
 
     return model, criterion, postprocessors
