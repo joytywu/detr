@@ -34,7 +34,7 @@ class CocoEvaluator(object):
         self.eval_imgs = {k: [] for k in iou_types}
 
     def update(self, predictions): ### - maybe something wrong in here
-        print(predictions)
+        #print(predictions)
         img_ids = list(np.unique(list(predictions.keys())))
         self.img_ids.extend(img_ids)
 
@@ -46,15 +46,15 @@ class CocoEvaluator(object):
             with open(os.devnull, 'w') as devnull:
                 with contextlib.redirect_stdout(devnull):
                     coco_dt = COCO.loadRes(self.coco_gt, results) if results else COCO()
-                    print('##', coco_dt)
+                    #print('##', coco_dt)
             coco_eval = self.coco_eval[iou_type]
             
             coco_eval.cocoDt = coco_dt
             coco_eval.params.imgIds = list(img_ids)
-            print('###', coco_eval.cocoGt) #not empty
-            print('###', coco_eval.cocoDt) #not empty
-            print('###', coco_eval._gts) #empty {}
-            print('###', coco_eval._dts) #empty {}
+            #print('###', coco_eval.cocoGt) #not empty
+            #print('###', coco_eval.cocoDt) #not empty
+            #print('###', coco_eval._gts) #empty {}
+            #print('###', coco_eval._dts) #empty {}
             img_ids, eval_imgs = evaluate(coco_eval) #key error with 'bbox' here
 
             self.eval_imgs[iou_type].append(eval_imgs)
@@ -220,13 +220,15 @@ def evaluate(self):
     # tic = time.time()
     # print('Running per image evaluation...')
     p = self.params
-    print('self._gts', self._gts) #emtpy {}
-    print('self._dts', self._dts) #emtpy {}
+    #print('self._gts', self._gts) #emtpy {}
+    #print('self._dts', self._dts) #emtpy {}
+    
     # add backward compatibility if useSegm is specified in params
     if p.useSegm is not None:
         p.iouType = 'segm' if p.useSegm == 1 else 'bbox'
         print('useSegm (deprecated) is not None. Running {} evaluation'.format(p.iouType))
-    print('Evaluate annotation type *{}*'.format(p.iouType))
+    #print('Evaluate annotation type *{}*'.format(p.iouType))
+    
     p.imgIds = list(np.unique(p.imgIds))
     if p.useCats:
         p.catIds = list(np.unique(p.catIds))
@@ -240,7 +242,7 @@ def evaluate(self):
     catIds = p.catIds if p.useCats else [-1]
 
     if p.iouType == 'segm' or p.iouType == 'bbox':
-        print(p.iouType, '###')
+        #print(p.iouType, '###')
         computeIoU = self.computeIoU
     elif p.iouType == 'keypoints':
         computeIoU = self.computeOks

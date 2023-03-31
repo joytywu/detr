@@ -12,7 +12,7 @@ def get_coco_api_from_dataset(dataset):
         if isinstance(dataset, torch.utils.data.Subset):
             dataset = dataset.dataset
     if isinstance(dataset, torchvision.datasets.CocoDetection):
-        print(dataset.coco.dataset.keys())
+        #print(dataset.coco.dataset.keys())
         return dataset.coco
 
 

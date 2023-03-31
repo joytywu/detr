@@ -176,11 +176,11 @@ def main(args):
         coco_val = datasets.coco.build("val", args)
         base_ds = get_coco_api_from_dataset(coco_val)
     elif args.dataset_file == "coco_petct":
-        print(args.dataset_file)
+        #print(args.dataset_file)
         coco_val = datasets.coco_petct.build("val", args)
-        print(isinstance(coco_val, torchvision.datasets.CocoDetection))
+        #print(isinstance(coco_val, torchvision.datasets.CocoDetection))
         base_ds = get_coco_api_from_dataset(coco_val)
-        print(type(base_ds))
+        #print(type(base_ds))
     else:
         # best to just use this since may want to do cross val which won't work with panoptic dataloading pipeline
         base_ds = get_coco_api_from_dataset(dataset_val) # this should do for petct experiments
@@ -206,15 +206,25 @@ def main(args):
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             args.start_epoch = checkpoint['epoch'] + 1
 
-    # Don't fully understand this part - what's the difference between data_loader_val and base_ds
-#     if args.eval:
-    print(type(base_ds))
-    print(type(data_loader_val))
-    test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
-                                          data_loader_val, base_ds, device, args.output_dir)
-    if args.output_dir:
-        utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
-    return
+    # Evaluate on the test set
+    if args.eval: 
+        
+        dataset_test = build_dataset(image_set='test', args=args)
+        if args.distributed:
+            sampler_test = DistributedSampler(dataset_test, shuffle=False)
+        else:
+            sampler_test = torch.utils.data.SequentialSampler(dataset_test)
+        data_loader_test = DataLoader(dataset_test, args.batch_size, sampler=sampler_test,
+                                 drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
+        coco_test = datasets.coco_petct.build("test", args)
+        base_ds_test = get_coco_api_from_dataset(coco_test)
+        
+        test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
+                                              data_loader_test, base_ds_test, device, args.output_dir)
+        if args.output_dir:
+            utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
+        return
+    
     
     print("Start training")
     start_time = time.time()
