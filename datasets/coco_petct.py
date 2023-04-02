@@ -14,21 +14,22 @@ from PIL import Image
 from pycocotools.coco import COCO
 
 from panopticapi.utils import rgb2id
-from util.box_ops import masks_to_boxes, box_xywh_to_xyxy
+# from util.box_ops import masks_to_boxes, box_xywh_to_xyxy
 
-from .coco import make_coco_transforms # TO DO: will want to use own PET specifc transforms
+from .coco import make_coco_petct_transforms, make_coco_transforms 
 
 
 # Need own loader as reading from same .npy for image and masks
 class PETCT_CocoDetection(CocoDetection):
-    def __init__(self, img_folder, ann_file, transforms, return_masks, training=False):
+    def __init__(self, img_folder, ann_file, transforms, return_masks, training=False, experiment = 'baseline'):
         super(PETCT_CocoDetection, self).__init__(img_folder, ann_file)
         self._transforms = transforms
         self.return_masks = return_masks
         self.img_folder = img_folder
-        self.training = training
         self.ann_file = ann_file
         self.prepare = Convert_SUVtoGreyPIL_RLEtoMask(return_masks)
+        self.training = training
+        self.experiment = experiment
 
 #     # reading from a .npy file with presaved img (in suv values) and masks
 #     def _load_image_masks(self, id: int):
@@ -38,7 +39,8 @@ class PETCT_CocoDetection(CocoDetection):
 #             suv_img = np.load(f) # this is a single channel suv values image, dtype numpy float64
 #             masks = np.load(f)
 #         return (suv_img, masks)
-
+    
+    # reading from a .npy file with presaved img (in suv values)
     def _load_image_npy(self, id: int):
         npy_name = self.coco.loadImgs(id)[0]["file_name"] # loads a .npy file by image_id
         img_ann_path = self.img_folder/Path(npy_name)
@@ -56,7 +58,9 @@ class PETCT_CocoDetection(CocoDetection):
         target = self._load_target(image_id) #inherited this from torchvision CocoDetection
         target = {'image_id': image_id, 'annotations': target}
         
-        if self.training:
+        if self.experiment == 'baseline':
+            suv_max = 6
+        elif self.training:
             # Random augmentation for SUV normalization to gray images
             suv_values = [5,6,7,8,9,10,15,20]
             suv_max = random.choice(suv_values)
@@ -66,10 +70,10 @@ class PETCT_CocoDetection(CocoDetection):
         
         if self._transforms is not None:
             #print('normalizing image ###')
-            img, target = self._transforms(img, target)
+            img, target = self._transforms(img, target) # Transforms also normalizes boxes to box_xyxy_to_cxcywh
             #print('normalized ####')
 
-        return img, target
+        return img, target # output bbox format in normalized cxcywh in (0,1)
 
     def __len__(self):
         return len(self.ids)
@@ -149,8 +153,9 @@ class Convert_SUVtoGreyPIL_RLEtoMask(object):
         anno = [obj for obj in anno if 'iscrowd' not in obj or obj['iscrowd'] == 0]
 
         boxes = [obj["bbox"] for obj in anno]
-        # guard against no boxes via resizing --> code below actually turns xywh to xyxy
+        # guard against no boxes via resizing 
         boxes = torch.as_tensor(boxes, dtype=torch.float32).reshape(-1, 4)
+        # turns xywh to xyxy
         boxes[:, 2:] += boxes[:, :2]
         # makes sure boxes don't go outside image
         boxes[:, 0::2].clamp_(min=0, max=w)
@@ -171,7 +176,7 @@ class Convert_SUVtoGreyPIL_RLEtoMask(object):
             if num_keypoints:
                 keypoints = keypoints.view(num_keypoints, -1, 3)
 
-        keep = (boxes[:, 3] > boxes[:, 1]) & (boxes[:, 2] > boxes[:, 0])
+        keep = (boxes[:, 3] > boxes[:, 1]) & (boxes[:, 2] > boxes[:, 0]) # removes [0,0,0,0] no objects boxes anyway
         boxes = boxes[keep]
         classes = classes[keep]
         if self.return_masks:
@@ -197,7 +202,7 @@ class Convert_SUVtoGreyPIL_RLEtoMask(object):
         target["orig_size"] = torch.as_tensor([int(h), int(w)])
         target["size"] = torch.as_tensor([int(h), int(w)])
 
-        return img, target
+        return img, target #boxes in xyxy format
 
     
 
@@ -218,8 +223,12 @@ def build(image_set, args):
     else:
         training = False
     
-    dataset = PETCT_CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set)
-                                 , return_masks=args.masks, training = training)
+    if args.experiment == 'baseline':
+        dataset = PETCT_CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set)
+                                 , return_masks=args.masks, training = training, experiment = args.experiment)
+    else:
+        dataset = PETCT_CocoDetection(img_folder, ann_file, transforms=make_coco_petct_transforms(image_set)
+                                 , return_masks=args.masks, training = training, experiment = args.experiment)
     
     return dataset    
     

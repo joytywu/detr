@@ -123,7 +123,9 @@ class SetCriterion(nn.Module):
 
         if log:
             # TODO this should probably be a separate loss, not hacked in this one here
-            losses['class_error'] = 100 - accuracy(src_logits[idx], target_classes_o)[0]
+            #losses['class_error'] = 100 - accuracy(src_logits[idx], target_classes_o)[0]
+            # class error without taking into account the "no-object" class per https://github.com/facebookresearch/detr/issues/41
+            losses['class_error'] = 100 - accuracy(src_logits[idx][..., :-1], target_classes_o)[0]
         return losses
 
     @torch.no_grad()
@@ -316,7 +318,7 @@ def build(args):
         # max_obj_id + 1, but the exact value doesn't really matter
         num_classes = 250
     if args.dataset_file == "coco_petct":
-        num_classes = args.num_classes # starting with 2
+        num_classes = args.num_classes # starting with 1+1 = 2
     if args.num_classes is not None:
         print('Building a DETR model with %s classes' % args.num_classes)
         num_classes = args.num_classes
@@ -358,7 +360,7 @@ def build(args):
     if args.masks:
         postprocessors['segm'] = PostProcessSegm() #petct will have segm then since dataset has the masks
         if args.dataset_file == "coco_panoptic":
-            is_thing_map = {i: i <= 90 for i in range(201)} ### TO DO: ??? what's the equivalent for PETCT
+            is_thing_map = {i: i <= 90 for i in range(201)} ### TO DO: ??? what's the equivalent for PETCT. Maybe not needed
             postprocessors["panoptic"] = PostProcessPanoptic(is_thing_map, threshold=0.85)
 
     return model, criterion, postprocessors

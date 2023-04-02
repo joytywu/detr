@@ -105,6 +105,10 @@ def get_args_parser():
     parser.add_argument('--train_split', default=0.9, type=float,
                        help="percentage of dataset to be used for training. If cross_val is true, this gives number of folds") 
 
+    # Augmentation parameters
+    parser.add_argument('--experiment', default='baseline', type=str,
+                       help='experiment description')
+    
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
                         help='number of distributed processes')
@@ -172,15 +176,15 @@ def main(args):
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
 
     if args.dataset_file == "coco_panoptic":
-        # We also evaluate AP during panoptic training, on original coco DS -- not sure we need to do this for petct
+        # We also evaluate AP during panoptic training, on original coco DS
         coco_val = datasets.coco.build("val", args)
         base_ds = get_coco_api_from_dataset(coco_val)
-    elif args.dataset_file == "coco_petct":
-        #print(args.dataset_file)
-        coco_val = datasets.coco_petct.build("val", args)
-        #print(isinstance(coco_val, torchvision.datasets.CocoDetection))
-        base_ds = get_coco_api_from_dataset(coco_val)
-        #print(type(base_ds))
+#     elif args.dataset_file == "coco_petct":
+#         #print(args.dataset_file)
+#         coco_val = datasets.coco_petct.build("val", args)
+#         #print(isinstance(coco_val, torchvision.datasets.CocoDetection))
+#         base_ds = get_coco_api_from_dataset(coco_val)
+#         #print(type(base_ds))
     else:
         # best to just use this since may want to do cross val which won't work with panoptic dataloading pipeline
         base_ds = get_coco_api_from_dataset(dataset_val) # this should do for petct experiments
@@ -216,8 +220,7 @@ def main(args):
             sampler_test = torch.utils.data.SequentialSampler(dataset_test)
         data_loader_test = DataLoader(dataset_test, args.batch_size, sampler=sampler_test,
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
-        coco_test = datasets.coco_petct.build("test", args)
-        base_ds_test = get_coco_api_from_dataset(coco_test)
+        base_ds_test = get_coco_api_from_dataset(dataset_test)
         
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
                                               data_loader_test, base_ds_test, device, args.output_dir)
@@ -249,12 +252,12 @@ def main(args):
                     'args': args,
                 }, checkpoint_path)
 
-        test_stats, coco_evaluator = evaluate(
+        val_stats, coco_evaluator = evaluate(
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
         )
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                     **{f'test_{k}': v for k, v in test_stats.items()},
+                     **{f'test_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
 

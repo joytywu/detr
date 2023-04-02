@@ -112,52 +112,42 @@ class ConvertCocoPolysToMask(object):
 
         return image, target
 
-# # adapted for PET tumor detection
-# def make_coco_transforms(image_set):
+    
+def make_coco_transforms(image_set):
 
-#     normalize = T.Compose([
-#         T.ToTensor(), # This will scale between 0 and 1 and make tensor channel first
-#         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) #not sure if this is helpful or bad 
-#     ])
+    normalize = T.Compose([
+        T.ToTensor(),
+        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
 
-#     scales = [352, 384, 416, 448, 480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
-#     sizes = [352, 384, 416, 448, 480, 512]
+    scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
 
-#     if image_set == 'train':
-#         return T.Compose([
-#             #T.RandomHorizontalFlip(),  #may not want this for pet/ct, makes no sense to flip pet images upside down
-#             T.RandomSelect(
-#                 T.RandomResize(scales, max_size=800),
-#                 T.RandomCenterCrop(sizes),
-# #                 T.Compose([
-# #                     T.RandomResize([400, 500, 600]),
-# #                     T.RandomSizeCrop(384, 600),
-# #                     T.RandomResize(scales, max_size=800),
-# #                 ]),
-#                 T.Compose([
-#                     T.RandomResize([400, 500, 600]),
-#                     T.RandomCenterCrop(sizes),
-#                     T.RandomResize(scales, max_size=800),
-#                 ]),
-#                 T.Compose([
-#                     T.RandomCenterCrop(sizes),
-#                     T.RandomResize(scales, max_size=800),
-#                 ])
-#             ),
-#             normalize,
-#         ])
+    if image_set == 'train':
+        return T.Compose([
+            T.RandomHorizontalFlip(),
+            T.RandomSelect(
+                T.RandomResize(scales, max_size=800),
+                T.Compose([
+                    T.RandomResize([400, 500, 600]),
+                    T.RandomSizeCrop(384, 600),
+                    T.RandomResize(scales, max_size=800),
+                ])
+            ),
+            normalize,
+        ])
 
-#     if (image_set == 'val')|(image_set == 'test'):
-#         return T.Compose([
-#             #T.RandomResize([800], max_size=800), #don't want to change specs on testing
-#             normalize,
-#         ])
+    #if image_set == 'val':
+    if (image_set == 'val')|(image_set == 'test'):
+        return T.Compose([
+            T.RandomResize([800], max_size=800),
+            normalize,
+        ])
 
-#     raise ValueError(f'unknown {image_set}')
+    raise ValueError(f'unknown {image_set}')
 
 
 # adapted for PET tumor detection
-def make_coco_transforms(image_set):
+def make_coco_petct_transforms(image_set):
 
     normalize = T.Compose([
         T.ToTensor(), # This will scale between 0 and 1 and make tensor channel first
@@ -182,12 +172,12 @@ def make_coco_transforms(image_set):
     if image_set == 'train':
         return T.Compose([
             #T.RandomHorizontalFlip(),  #may not want this for pet/ct, makes no sense to flip pet images upside down
-#             T.RandomSelectMultiple([
-#                 A,
-#                 B,
-#                 C,
-#                 D
-#             ]),
+            T.RandomSelectMultiple([
+                A,
+                B,
+                C,
+                D
+            ]),
             normalize,
         ])
 
