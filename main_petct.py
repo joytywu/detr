@@ -15,7 +15,7 @@ import torchvision
 import datasets
 import util.misc as utils
 from datasets import build_dataset, get_coco_api_from_dataset
-from engine import evaluate, train_one_epoch
+from engine import evaluate, train_one_epoch, EarlyStopping
 from models import build_model
 
 
@@ -83,7 +83,7 @@ def get_args_parser():
                         help="Relative classification weight of the no-object class")
 
     # dataset parameters
-    parser.add_argument('--dataset_file', default='coco') # will need to have 'coco_petct' as dataset_file in input
+    parser.add_argument('--dataset_file', default='coco', type=str) # will need to have 'coco_petct' as dataset_file in input
     parser.add_argument('--coco_path', type=str)
     parser.add_argument('--coco_panoptic_path', type=str)
     parser.add_argument('--coco_petct_path', type=str) # new
@@ -108,6 +108,8 @@ def get_args_parser():
     # Augmentation parameters
     parser.add_argument('--experiment', default='baseline', type=str,
                        help='experiment description')
+    parser.add_argument('--early_stopping', default=False, type=bool)
+    parser.add_argument('--patience', default=10, type=int)
     
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -229,6 +231,14 @@ def main(args):
         return
     
     
+    # initialize the early_stopping directory and object
+    es_dir = output_dir/Path('early_stopping')
+    es_path = es_dir/Path('checkpoint.pth')
+    if not os.path.exists(es_dir):
+        os.makedirs(es_dir)
+    early_stopping = EarlyStopping(patience=args.patience, verbose=True, path = es_path)
+    
+    
     print("Start training")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
@@ -257,7 +267,7 @@ def main(args):
         )
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                     **{f'test_{k}': v for k, v in val_stats.items()},
+                     **{f'val_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
 
@@ -275,7 +285,20 @@ def main(args):
                     for name in filenames:
                         torch.save(coco_evaluator.coco_eval["bbox"].eval,
                                    output_dir / "eval" / name)
-
+        
+        # early_stopping needs the validation loss to check if it has decresed, 
+        # and if it has, it will make a checkpoint of the current model
+        early_stopping(val_stats, model)
+        if args.early_stopping:
+            # if really want to stop early
+            if early_stopping.early_stop:
+                print("Early stopping")
+                total_time = time.time() - start_time
+                total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+                print('Training time {}'.format(total_time_str))
+                break
+                
+            
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
