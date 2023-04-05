@@ -13,7 +13,7 @@ import numpy as np
 import torch
 
 # from pycocotools.cocoeval import COCOeval
-from cocoeval_petct import COCOeval_PET
+from .cocoeval_petct import COCOeval_PET
 from pycocotools.coco import COCO
 import pycocotools.mask as mask_util
 
