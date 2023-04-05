@@ -12,7 +12,8 @@ import copy
 import numpy as np
 import torch
 
-from pycocotools.cocoeval import COCOeval
+# from pycocotools.cocoeval import COCOeval
+from cocoeval_petct import COCOeval_PET
 from pycocotools.coco import COCO
 import pycocotools.mask as mask_util
 
@@ -28,7 +29,7 @@ class CocoEvaluator(object):
         self.iou_types = iou_types
         self.coco_eval = {}
         for iou_type in iou_types:
-            self.coco_eval[iou_type] = COCOeval(cocoGt=coco_gt, iouType=iou_type)
+            self.coco_eval[iou_type] = COCOeval_PET(cocoGt=coco_gt, iouType=iou_type)
 
         self.img_ids = []
         self.eval_imgs = {k: [] for k in iou_types}
