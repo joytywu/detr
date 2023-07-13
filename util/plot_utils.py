@@ -51,10 +51,12 @@ def plot_logs(logs, fields=('class_error', 'loss_bbox_unscaled', 'mAP'), ewm_col
 
     # load log file(s) and plot
     dfs = [pd.read_json(Path(p) / log_name, lines=True) for p in logs]
-
+    
     fig, axs = plt.subplots(ncols=len(fields), figsize=(16, 5))
 
     for df, color in zip(dfs, sns.color_palette(n_colors=len(logs))):
+        if 'val_coco_eval_bbox' in df.columns.tolist():
+            df.columns = df.columns.str.replace('val_coco_eval_bbox', 'test_coco_eval_bbox')
         for j, field in enumerate(fields):
             if field == 'mAP':
                 coco_eval = pd.DataFrame(
@@ -63,7 +65,7 @@ def plot_logs(logs, fields=('class_error', 'loss_bbox_unscaled', 'mAP'), ewm_col
                 axs[j].plot(coco_eval, c=color)
             else:
                 df.interpolate().ewm(com=ewm_col).mean().plot(
-                    y=[f'train_{field}', f'test_{field}'],
+                    y=[f'train_{field}', f'val_{field}'],
                     ax=axs[j],
                     color=[color] * 2,
                     style=['-', '--']
