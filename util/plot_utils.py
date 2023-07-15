@@ -95,7 +95,11 @@ def plot_precision_recall(files, naming_scheme='iter'):
         scores = scores[0, :, :, 0, -1].mean(1)
         prec = precision.mean()
         rec = data['recall'][0, :, 0, -1].mean()
-        print(f'{naming_scheme} {name}: mAP@50={prec * 100: 05.1f}, ' +
+        if 'eval' in name:
+            iou = 10
+        else:
+            iou = 50
+        print(f'{naming_scheme} {name}: mAP@{iou}={prec * 100: 05.1f}, ' +
               f'score={scores.mean():0.3f}, ' +
               f'f1={2 * prec * rec / (prec + rec + 1e-8):0.3f}'
               )
