@@ -218,8 +218,9 @@ def run_workflow(data_in_root, data_out_root, model_path, transform, finetuned_c
     num_classes = len(finetuned_classes)
     
     root = plb.Path(data_in_root/plb.Path('petmr_detr_dataset/test/SUV_MIP/'))
-    study_paths = list(root.glob('*.nii.gz'))
-    study_paths = [x for x in study_paths if 'suv' in str(x).lower()]
+    study_paths = list(root.glob('*SUV2LAVA*.nii.gz'))
+#     study_paths = list(root.glob('*.nii.gz'))
+#     study_paths = [x for x in study_paths if 'suv' in str(x).lower()]
     study_names = [str(x.name) for x in study_paths] # turns path back to str data type
     pet_paths = [os.path.join('/master/image_for_train_processed',name) for name in study_names]
     pet_paths = [str(data_in_root)+p for p in pet_paths] #somehow path won't add any other way...
