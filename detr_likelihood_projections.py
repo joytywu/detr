@@ -214,16 +214,17 @@ def load_model(num_classes, model_path):
     return model.eval()
 
 
-def run_workflow(data_in_root, data_out_root, model_path, transform, finetuned_classes):
+def run_workflow(data_in_root, pet_dir, data_out_root, model_path, transform, finetuned_classes):
     num_classes = len(finetuned_classes)
     
-    root = plb.Path(data_in_root/plb.Path('petmr_detr_dataset/test/SUV_MIP/'))
-    study_paths = list(root.glob('*SUV2LAVA*.nii.gz'))
+    #root = plb.Path(data_in_root/plb.Path('petmr_detr_dataset/test/SUV_MIP/'))
+    study_paths = list(data_in_root.glob('*[Ss][Uu][Vv]*.nii.gz'))
 #     study_paths = list(root.glob('*.nii.gz'))
 #     study_paths = [x for x in study_paths if 'suv' in str(x).lower()]
     study_names = [str(x.name) for x in study_paths] # turns path back to str data type
-    pet_paths = [os.path.join('/master/image_for_train_processed',name) for name in study_names]
-    pet_paths = [str(data_in_root)+p for p in pet_paths] #somehow path won't add any other way...
+    pet_paths = [os.path.join(pet_dir,name) for name in study_names]
+#     pet_paths = [os.path.join('/master/image_for_train_processed',name) for name in study_names]
+#     pet_paths = [str(data_in_root)+p for p in pet_paths] #somehow path won't add any other way...
      
     model = load_model(num_classes, model_path)
     
@@ -263,12 +264,15 @@ class NpEncoder(json.JSONEncoder):
 
 if __name__ == "__main__":
     data_in_root = plb.Path(sys.argv[1])  # path to parent directory for all studies, e.g. /gpfs/fs0/data/stanford_data/
-    data_out_root = plb.Path(sys.argv[2])  # path to where we want to save the DETR dataset, e.g. /gpfs/fs0/data/stanford_data/petmr_detr_dataset/test/
+    pet_dir = str(sys.argv[2]) # path to original pet nifti, e.g. /gpfs/fs0/data/stanford_data/master/image_for_train_processed/
+    
+    data_out_root = plb.Path(sys.argv[3])  # path to where we want to save the DETR dataset, e.g. /gpfs/fs0/data/stanford_data/petmr_detr_dataset/test/
     if not os.path.isdir(data_out_root):
         os.makedirs(data_out_root)
         os.makedirs(os.path.join(data_out_root,'NIFTI'))
         os.makedirs(os.path.join(data_out_root,'JSON'))
-    model_path = plb.Path(sys.argv[3]) # path to trained model checkpoint, # /home/joywu/detr/outputs/baseline/checkpoint.pth
+
+    model_path = plb.Path(sys.argv[4]) # path to trained model checkpoint, # /home/joywu/detr/outputs/baseline/checkpoint.pth
     
     # standard PyTorch mean-std input image normalization
     transform = T.Compose([
@@ -280,9 +284,13 @@ if __name__ == "__main__":
     finetuned_classes = [
           'N/A', 'tumor',]
     
-    run_workflow(data_in_root, data_out_root, model_path, transform, finetuned_classes) 
+    run_workflow(data_in_root, pet_dir, data_out_root, model_path, transform, finetuned_classes) 
     
-    # python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/test/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
+    # python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_test/SUV_MIP/ /gpfs/fs0/data/stanford_data/master/image_for_train_processed/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_test/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
+    
+    # python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_dev/SUV_MIP/ /gpfs/fs0/data/stanford_data/master/image_for_train_processed/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_dev/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
+    
+    # python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/followup/SUV_MIP/ /gpfs/fs0/data/stanford_data/followup_shashi/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/followup/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
     
     
     
