@@ -112,7 +112,7 @@ def rescale_bboxes(out_bbox, size):
     return b
 
 
-def filter_bboxes_from_outputs(outputs, size, threshold=0.7):
+def filter_bboxes_from_outputs(outputs, size, threshold):
   
     # keep only predictions with confidence above threshold
     probas = outputs['pred_logits'].softmax(-1)[0, :, :-1]
@@ -126,7 +126,7 @@ def filter_bboxes_from_outputs(outputs, size, threshold=0.7):
     return probas_to_keep, bboxes_scaled
 
 
-def get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = 48, labels = True, threshold = 0.5):
+def get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = 48, labels = True, threshold = 0.7):
     # Collate predicted bboxes
     bboxes_dict = {}
     for angle in tqdm(range(angles)):
