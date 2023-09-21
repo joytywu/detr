@@ -286,11 +286,11 @@ if __name__ == "__main__":
     
     run_workflow(data_in_root, pet_dir, data_out_root, model_path, transform, finetuned_classes) 
     
-    # python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_test/SUV_MIP/ /gpfs/fs0/data/stanford_data/master/image_for_train_processed/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_test/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
+    #done #python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_test/SUV_MIP/ /gpfs/fs0/data/stanford_data/master/image_for_train_processed/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_test/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
     
-    # python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_dev/SUV_MIP/ /gpfs/fs0/data/stanford_data/master/image_for_train_processed/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_dev/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
+    #done #python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_dev/SUV_MIP/ /gpfs/fs0/data/stanford_data/master/image_for_train_processed/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/baseline_dev/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
     
-    # python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/followup/SUV_MIP/ /gpfs/fs0/data/stanford_data/followup_shashi/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/followup/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
+    #done #python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/followup/SUV_MIP/ /gpfs/fs0/data/stanford_data/followup_shashi/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/followup/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
     
     
     
