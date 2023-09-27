@@ -190,14 +190,15 @@ def get_projected_bbox_likelihood(bboxes_dict, mip_stack, pet_img):
         box_probs = bboxes_dict[i]['likelihood']
 
         flat = np.zeros((height, width))
-        for j in range(len(boxes)):
+        #for j in range(len(boxes)):
+        for box, prob in zip(boxes,box_probs):
             # if max(box_probs[j]) < 0.05: continue           
-            xmin, ymin, xmax, ymax = boxes[j]
+            xmin, ymin, xmax, ymax = box
             xmin = int(xmin)
             xmax = int(xmax)
             ymin = int(ymin)
             ymax = int(ymax)
-            flat[ymin:ymax, xmin:xmax] = 1
+            flat[ymin:ymax, xmin:xmax] += prob[-1]
         #plt.imshow(flat,cmap='Greys')
 
         # Turn the flat 2D image into 3D image
@@ -219,9 +220,10 @@ def get_projected_bbox_likelihood(bboxes_dict, mip_stack, pet_img):
     
     # Reverse the MIP transformations
     # flip whole stack upside down again
-    reoriented = np.flipud(together).copy()
+    #reoriented = np.flipud(together).copy()
     # And rotate back to original orientation
-    reoriented = np.rot90(reoriented, k=3) 
+    reoriented = np.flip(together, axis=2).copy()
+    reoriented = np.rot90(reoriented, k = 3) 
     
     return reoriented
 
@@ -299,7 +301,7 @@ def run_workflow_from_nested_pet(data_in_root, data_out_root, model_path, transf
         for study_dir in tqdm(study_dirs):
             # relative path is the ID of the pet/ct exam
             relative_path = plb.Path(study_dir.parent.name)/plb.Path(study_dir.name)
-            study_id = str(relative_path).replace('/','|')+'.nii.gz'
+            study_id = str(relative_path).replace('/','|')
             print(study_id)
             pet_path = os.path.join(study_dir,'SUVres.nii.gz')
 #         seg_path = os.path.join(study_dir,'SEGres.nii.gz')
@@ -308,11 +310,12 @@ def run_workflow_from_nested_pet(data_in_root, data_out_root, model_path, transf
             pet_img = pet.get_fdata()
             header = pet.header
             print('Creating and saving MIP images for pet study')
-            mip_pet = create_mipNIFTI_from_3D(pet, nb_image=num_angles)
+#             mip_pet = create_mipNIFTI_from_3D(pet, nb_image=num_angles)
             print('Saving MIP data')
             mip_outpath = os.path.join(out_path, 'MIP_SUV', '{}.nii.gz'.format(study_id))
-            nib.save(mip_pet, mip_outpath)
+#             nib.save(mip_pet, mip_outpath)
             print('Tumor bbox objects detection')
+            mip_pet = nib.load(mip_outpath)
             mip_stack = mip_pet.get_fdata()
             # num_angles = mip_stack.shape[2]
             bboxes_dict = get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = num_angles, threshold = 0.7)
@@ -372,7 +375,7 @@ if __name__ == "__main__":
     
     #done #python detr_likelihood_projections.py /gpfs/fs0/data/stanford_data/petmr_detr_dataset/followup/SUV_MIP/ /gpfs/fs0/data/stanford_data/followup_shashi/ /gpfs/fs0/data/stanford_data/petmr_detr_dataset/followup/bbox_likelihood_projections/ /home/joywu/detr/outputs/baseline/checkpoint.pth
     
-    # python detr_likelihood_projections.py /Volumes/GazeData/data/pilot/ . /Users/joywu/Documents/Research/gaze_decoding /Users/joywu/Documents/Research/detr/outputs/baseline/checkpoint.pth
+    # python detr_likelihood_projections.py /Volumes/GazeData/data/pilot/ . /Users/joywu/Documents/Research/gaze_decoding/bbox_likelihood/ /Users/joywu/Documents/Research/detr/outputs/baseline/checkpoint.pth
     
     
     
