@@ -131,8 +131,9 @@ def box_cxcywh_to_xyxy(x):
     return torch.stack(b, dim=1)
 
 
-def rescale_bboxes(out_bbox, size):
+def rescale_bboxes(out_bbox, size, yscale=1.5):
     img_w, img_h = size
+    #img_h = int(img_h/yscale)
     b = box_cxcywh_to_xyxy(out_bbox)
     b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
     return b
@@ -152,7 +153,24 @@ def filter_bboxes_from_outputs(outputs, size, threshold):
     return probas_to_keep, bboxes_scaled
 
 
+def resize_mips(mips, yscale = 1.5):
+    xdim = mips.shape[1]
+    ydim = mips.shape[0]
+    ydim = int(ydim*yscale)
+    scaled_mips=[]
+    for i in range(0,mips.shape[-1]):
+        mip = mips[:,:,i].copy()
+        print(mip.shape)
+        mip = cv2.resize(mip, (xdim, ydim), interpolation =  cv2.INTER_AREA)
+        print(mip.shape)
+        scaled_mips.append(mip)
+    return np.dstack(scaled_mips)
+
+
 def get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = 48, labels = True, threshold = 0.7):
+    # scale mips to be spatially more spread out in y/height axis as that's how detr model was trained
+    #mip_stack = resize_mips(mip_stack, yscale = 1.5)
+    
     # Collate predicted bboxes
     bboxes_dict = {}
     for angle in tqdm(range(angles)):
@@ -165,9 +183,9 @@ def get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = 48, labels 
         # propagate through the model
         outputs = model(img)
         #print('Nth angle:', angle)
-        probas_to_keep, bboxes_scaled = filter_bboxes_from_outputs(outputs, size, threshold=threshold)
+        probas_to_keep, bboxes_rescaled = filter_bboxes_from_outputs(outputs, size, threshold=threshold)
         #print(bboxes_scaled)
-        bboxes_dict[angle] = {'boxes':bboxes_scaled.detach().numpy(), # tensor([x_min,y_min,x_max,y_max],[]..)
+        bboxes_dict[angle] = {'boxes':bboxes_rescaled.detach().numpy(), # tensor([x_min,y_min,x_max,y_max],[]..)
                               'likelihood':probas_to_keep.detach().numpy()}
         
         #plot_finetuned_results(PIL_image, probas_to_keep, bboxes_scaled, labels = labels)
@@ -271,7 +289,7 @@ def run_workflow_from_mip(data_in_root, pet_dir, data_out_root, model_path, tran
         mip_stack = mip_pet.get_fdata()
         num_angles = mip_stack.shape[2]
         print('Tumor bbox objects detection')
-        bboxes_dict = get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = num_angles, threshold = 0.7)
+        bboxes_dict = get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = num_angles, threshold = 0.5)
         print('Generating 3D Bbox likelihood back projections')
         bbox_likelihoods_3D = get_projected_bbox_likelihood(bboxes_dict, mip_stack, pet_img)
         likelihood_nifti = nib.Nifti1Image(bbox_likelihoods_3D, None, header)
@@ -289,7 +307,7 @@ def run_workflow_from_nested_pet(data_in_root, data_out_root, model_path, transf
     num_classes = len(finetuned_classes)
     model = load_model(num_classes, model_path)
     
-    for split in ['train','val']:
+    for split in ['train','val','test']:
         data_root = os.path.join(data_in_root, split)
         out_path = os.path.join(data_out_root, split)
         os.makedirs(os.path.join(data_out_root, split,'MIP_SUV'),exist_ok=True)
@@ -310,15 +328,15 @@ def run_workflow_from_nested_pet(data_in_root, data_out_root, model_path, transf
             pet_img = pet.get_fdata()
             header = pet.header
             print('Creating and saving MIP images for pet study')
-#             mip_pet = create_mipNIFTI_from_3D(pet, nb_image=num_angles)
+            mip_pet = create_mipNIFTI_from_3D(pet, nb_image=num_angles)
             print('Saving MIP data')
             mip_outpath = os.path.join(out_path, 'MIP_SUV', '{}.nii.gz'.format(study_id))
-#             nib.save(mip_pet, mip_outpath)
+            nib.save(mip_pet, mip_outpath)
             print('Tumor bbox objects detection')
-            mip_pet = nib.load(mip_outpath)
+#             mip_pet = nib.load(mip_outpath)
             mip_stack = mip_pet.get_fdata()
             # num_angles = mip_stack.shape[2]
-            bboxes_dict = get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = num_angles, threshold = 0.7)
+            bboxes_dict = get_all_predicted_bboxes(mip_stack, model, suv_max = 6, angles = num_angles, threshold = 0.5)
             print('Generating 3D Bbox likelihood back projections')
             bbox_likelihoods_3D = get_projected_bbox_likelihood(bboxes_dict, mip_stack, pet_img)
             likelihood_nifti = nib.Nifti1Image(bbox_likelihoods_3D, None, header)
